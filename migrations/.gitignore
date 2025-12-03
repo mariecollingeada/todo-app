@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environments
+venv/
+.venv/
+
+# Flask / SQLite DB
+*.db
+
+# Environment variables
+.env
+
+# Migration cache
+migrations/versions/*.pyc

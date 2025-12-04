@@ -28,9 +28,12 @@ class Task(db.Model):
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
     title: so.Mapped[str] = so.mapped_column(sa.String(128))
     description: so.Mapped[str] = so.mapped_column(sa.String(256))
+    due_date: so.Mapped[datetime] = so.mapped_column(index=True
+                                                    , default=lambda: datetime.now(timezone.utc))
     timestamp: so.Mapped[datetime] = so.mapped_column(index=True
                                                     , default=lambda: datetime.now(timezone.utc))
     user_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(User.id), index=True)
+    completed = db.Column(db.Boolean, default=False)
     author: so.Mapped[User] = so.relationship(back_populates="tasks")
     def __repr__(self):
         return 'Task {}>'.format(self.title)

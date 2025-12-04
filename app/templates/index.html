@@ -1,8 +1,15 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h1>Hi, {{ current_user.username }}!</h1>
-    {% for task in tasks %}
-    <div><p>{{ task.author.username }} says: <b>{{ task.title }}</b></p></div>
-    {% endfor %}
+<h1>Hi, {{ current_user.username }}!</h1>
+{% include "new-task.html" %}
+{% if tasks %}
+<h2>Your current tasks</h2>
+{% for task in tasks %}
+<div><p> <b>{{ task.title }}</b></p></div>
+{% endfor %}
+{% else %}
+<p>No tasks yet.</p>
+{% endif %}
+
 {% endblock %}

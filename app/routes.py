@@ -1,4 +1,4 @@
-from datetime import datetime, time
+from datetime import datetime, time, date
 from urllib.parse import urlsplit
 
 from flask import render_template, abort, flash, redirect, url_for, request
@@ -17,30 +17,29 @@ todos = [
 
 @app.route("/", methods=["GET", "POST"])
 @app.route("/index", methods=["GET", "POST"])
-
 @login_required
 def index():
-        form = TaskForm()
+    form = TaskForm()
 
-        if form.validate_on_submit():
-            due_date_dt = None
-            if form.due_date.data:
-                due_date_dt = datetime.combine(form.due_date.data, time.min)
-            task = Task(
-                title=form.title.data,
-                description=form.description.data,
-                due_date=due_date_dt,
-                user_id=current_user.id
-            )
-            db.session.add(task)
-            db.session.commit()
-            flash("Congratulations, you have added a new task!")
-            return redirect(url_for('index'))
+    if form.validate_on_submit():
+        due_date_dt = None
+        if form.due_date.data:
+            due_date_dt = datetime.combine(form.due_date.data, time.min)
+        task = Task(
+            title=form.title.data,
+            description=form.description.data,
+            due_date=due_date_dt,
+            user_id=current_user.id
+        )
+        db.session.add(task)
+        db.session.commit()
+        flash("Congratulations, you have added a new task!")
+        return redirect(url_for('index'))
 
-        tasks = db.session.scalars(
-            sa.select(Task).where(Task.user_id == current_user.id)
-        ).all()
-        return render_template("index.html", title="Home", form=form, tasks=tasks)
+    tasks = db.session.scalars(
+        sa.select(Task).where(Task.user_id == current_user.id)
+    ).all()
+    return render_template("index.html", title="Home", form=form, tasks=tasks)
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -60,12 +59,15 @@ def login():
         if not next_page or urlsplit(next_page).netloc != '':
             next_page = url_for('index')
         return redirect(next_page)
+
     return render_template('login.html', title='Sign In', form=form)
+
 
 @app.route('/logout')
 def logout():
     logout_user()
     return redirect(url_for('index'))
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -89,7 +91,6 @@ def all_tasks():
     return "<h1>List of all tasks</h1>"
 
 
-# note the <int:task_id> converter here
 @app.route("/tasks/<int:task_id>")
 def get_task(task_id):
     # find the todo with matching id
@@ -100,3 +101,59 @@ def get_task(task_id):
     return render_template("task.html", task=task)
 
 
+@app.route("/tasks/<int:task_id>/toggle", methods=["POST"])
+@login_required
+def toggle_task(task_id):
+    task = db.session.get(Task, task_id)
+    if task is None or task.user_id != current_user.id:
+        abort(404)
+
+    task.completed = not task.completed
+    db.session.commit()
+    return redirect(url_for("index"))
+
+
+@app.route("/tasks/<int:task_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_task(task_id):
+    task = db.session.get(Task, task_id)
+    if task is None or task.user_id != current_user.id:
+        abort(404)
+
+    form = TaskForm(obj=task)
+
+    if form.validate_on_submit():
+        task.title = form.title.data
+        task.description = form.description.data
+
+        if hasattr(form, "due_date"):
+            raw_due = form.due_date.data
+            if raw_due:
+                if isinstance(raw_due, date):
+                    task.due_date = datetime.combine(raw_due, time.min)
+                else:
+                    try:
+                        task.due_date = datetime.strptime(raw_due, "%Y-%m-%d")
+                    except ValueError:
+                        task.due_date = None
+            else:
+                task.due_date = None
+
+        db.session.commit()
+        flash("Task updated!")
+        return redirect(url_for("index"))
+
+    return render_template("edit_task.html", title="Edit Task", form=form, task=task)
+
+
+@app.route("/tasks/<int:task_id>/delete", methods=["POST"])
+@login_required
+def delete_task(task_id):
+    task = db.session.get(Task, task_id)
+    if task is None or task.user_id != current_user.id:
+        abort(404)
+
+    db.session.delete(task)
+    db.session.commit()
+    flash("Task deleted!")
+    return redirect(url_for("index"))
